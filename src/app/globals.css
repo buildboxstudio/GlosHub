@@ -1,0 +1,127 @@
+@import url("https://fonts.googleapis.com/css2?family=Press+Start+2P&family=VT323&display=swap");
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --grid: rgba(155, 92, 255, 0.08);
+}
+
+* {
+  -webkit-font-smoothing: none;
+  image-rendering: pixelated;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+  min-height: 100%;
+  background: #0a0520;
+  color: #eafcff;
+  font-family: "VT323", monospace;
+  font-size: 20px;
+  letter-spacing: 0.5px;
+}
+
+body {
+  background-image:
+    linear-gradient(var(--grid) 1px, transparent 1px),
+    linear-gradient(90deg, var(--grid) 1px, transparent 1px),
+    radial-gradient(circle at 20% 0%, rgba(155, 92, 255, 0.25), transparent 45%),
+    radial-gradient(circle at 90% 10%, rgba(34, 224, 255, 0.18), transparent 40%),
+    radial-gradient(circle at 50% 100%, rgba(255, 79, 216, 0.18), transparent 50%);
+  background-size: 32px 32px, 32px 32px, 100% 100%, 100% 100%, 100% 100%;
+  background-attachment: fixed;
+}
+
+@layer components {
+  .font-pixel {
+    font-family: "Press Start 2P", monospace;
+  }
+
+  /* Pixel-stepped border using layered box-shadow blocks */
+  .pixel-border {
+    position: relative;
+    image-rendering: pixelated;
+    box-shadow:
+      0 -4px 0 0 #0a0520,
+      0 4px 0 0 #0a0520,
+      -4px 0 0 0 #0a0520,
+      4px 0 0 0 #0a0520,
+      0 -8px 0 0 currentColor,
+      0 8px 0 0 currentColor,
+      -8px 0 0 0 currentColor,
+      8px 0 0 0 currentColor;
+  }
+
+  .pixel-card {
+    @apply relative bg-ink-800/90 border-4 border-ink-600 p-5;
+    box-shadow: 6px 6px 0 0 rgba(0, 0, 0, 0.55);
+    clip-path: polygon(
+      0 8px, 8px 8px, 8px 0,
+      calc(100% - 8px) 0, calc(100% - 8px) 8px, 100% 8px,
+      100% calc(100% - 8px), calc(100% - 8px) calc(100% - 8px), calc(100% - 8px) 100%,
+      8px 100%, 8px calc(100% - 8px), 0 calc(100% - 8px)
+    );
+  }
+
+  .pixel-btn {
+    @apply font-pixel text-[10px] sm:text-xs uppercase px-5 py-3 text-ink-900 transition-all duration-75 select-none;
+    image-rendering: pixelated;
+    box-shadow: 4px 4px 0 0 rgba(0, 0, 0, 0.6);
+    clip-path: polygon(
+      0 6px, 6px 6px, 6px 0,
+      calc(100% - 6px) 0, calc(100% - 6px) 6px, 100% 6px,
+      100% calc(100% - 6px), calc(100% - 6px) calc(100% - 6px), calc(100% - 6px) 100%,
+      6px 100%, 6px calc(100% - 6px), 0 calc(100% - 6px)
+    );
+  }
+
+  .pixel-btn:active {
+    transform: translate(4px, 4px);
+    box-shadow: 0 0 0 0 rgba(0, 0, 0, 0.6);
+  }
+
+  .pixel-input {
+    @apply w-full bg-ink-900 border-4 border-ink-600 px-4 py-2 text-neon-cyan font-body text-xl outline-none focus:border-neon-cyan;
+    image-rendering: pixelated;
+  }
+
+  .scanlines::after {
+    content: "";
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    background: repeating-linear-gradient(
+      to bottom,
+      rgba(0, 0, 0, 0) 0px,
+      rgba(0, 0, 0, 0) 2px,
+      rgba(0, 0, 0, 0.18) 3px,
+      rgba(0, 0, 0, 0.18) 4px
+    );
+    z-index: 9999;
+    mix-blend-mode: multiply;
+  }
+
+  .text-glow-pink {
+    text-shadow: 0 0 8px rgba(255, 79, 216, 0.8), 2px 2px 0 #0a0520;
+  }
+  .text-glow-cyan {
+    text-shadow: 0 0 8px rgba(34, 224, 255, 0.8), 2px 2px 0 #0a0520;
+  }
+}
+
+/* Pixel scrollbar */
+::-webkit-scrollbar {
+  width: 12px;
+  height: 12px;
+}
+::-webkit-scrollbar-track {
+  background: #140a33;
+}
+::-webkit-scrollbar-thumb {
+  background: #9b5cff;
+  border: 2px solid #0a0520;
+}
