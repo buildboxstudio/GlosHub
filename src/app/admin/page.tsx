@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import HudBar from "@/components/HudBar";
 import PixelBackground from "@/components/pixel/PixelBackground";
@@ -63,16 +63,30 @@ function ModalOverlay({
   );
 }
 
+function loadFromStorage<T>(key: string, fallback: T): T {
+  try {
+    const raw = localStorage.getItem("glos.admin." + key);
+    if (raw) return JSON.parse(raw) as T;
+  } catch { /* ignore */ }
+  return fallback;
+}
+
+function saveToStorage(key: string, value: unknown) {
+  try {
+    localStorage.setItem("glos.admin." + key, JSON.stringify(value));
+  } catch { /* ignore */ }
+}
+
 export default function AdminDashboard() {
   const router = useRouter();
   const { user, loading } = useAuth();
   const [tab, setTab] = useState<Tab>("staff");
 
-  const [staff, setStaff] = useState<Staff[]>([]);
-  const [attendance, setAttendance] = useState<Attendance[]>([]);
-  const [salaries, setSalaries] = useState<Salary[]>([]);
-  const [customers, setCustomers] = useState<CustomerHandled[]>([]);
-  const [leaves, setLeaves] = useState<LeaveRequest[]>([]);
+  const [staff, setStaff] = useState<Staff[]>(() => loadFromStorage("staff", []));
+  const [attendance, setAttendance] = useState<Attendance[]>(() => loadFromStorage("attendance", []));
+  const [salaries, setSalaries] = useState<Salary[]>(() => loadFromStorage("salaries", []));
+  const [customers, setCustomers] = useState<CustomerHandled[]>(() => loadFromStorage("customers", []));
+  const [leaves, setLeaves] = useState<LeaveRequest[]>(() => loadFromStorage("leaves", []));
   const [attFilter, setAttFilter] = useState<"harian" | "mingguan" | "bulanan">("harian");
 
   // Staff modal state
@@ -96,6 +110,12 @@ export default function AdminDashboard() {
     if (!loading && !user) router.replace("/");
     if (!loading && user?.role !== "admin") router.replace("/dashboard");
   }, [user, loading, router]);
+
+  useEffect(() => { saveToStorage("staff", staff); }, [staff]);
+  useEffect(() => { saveToStorage("attendance", attendance); }, [attendance]);
+  useEffect(() => { saveToStorage("salaries", salaries); }, [salaries]);
+  useEffect(() => { saveToStorage("customers", customers); }, [customers]);
+  useEffect(() => { saveToStorage("leaves", leaves); }, [leaves]);
 
   if (loading || !user || user.role !== "admin") {
     return (
