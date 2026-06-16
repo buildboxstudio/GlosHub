@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import HudBar from "@/components/HudBar";
 import PixelBackground from "@/components/pixel/PixelBackground";
@@ -19,6 +19,8 @@ import {
   Staff,
 } from "@/lib/types";
 import { rupiah, todayISO, STATUS_COLOR, STATUS_LABEL } from "@/lib/format";
+import { isSupabaseEnabled } from "@/lib/supabase/client";
+import * as ds from "@/lib/dataService";
 
 type Tab =
   | "staff"
@@ -38,7 +40,7 @@ const TABS: { key: Tab; label: string; icon: string }[] = [
 ];
 
 function uid() {
-  return Math.random().toString(36).slice(2, 8);
+  return crypto.randomUUID?.() ?? Math.random().toString(36).slice(2, 10);
 }
 
 function ModalOverlay({
@@ -63,30 +65,17 @@ function ModalOverlay({
   );
 }
 
-function loadFromStorage<T>(key: string, fallback: T): T {
-  try {
-    const raw = localStorage.getItem("glos.admin." + key);
-    if (raw) return JSON.parse(raw) as T;
-  } catch { /* ignore */ }
-  return fallback;
-}
-
-function saveToStorage(key: string, value: unknown) {
-  try {
-    localStorage.setItem("glos.admin." + key, JSON.stringify(value));
-  } catch { /* ignore */ }
-}
-
 export default function AdminDashboard() {
   const router = useRouter();
   const { user, loading } = useAuth();
   const [tab, setTab] = useState<Tab>("staff");
+  const [dataLoaded, setDataLoaded] = useState(false);
 
-  const [staff, setStaff] = useState<Staff[]>(() => loadFromStorage("staff", []));
-  const [attendance, setAttendance] = useState<Attendance[]>(() => loadFromStorage("attendance", []));
-  const [salaries, setSalaries] = useState<Salary[]>(() => loadFromStorage("salaries", []));
-  const [customers, setCustomers] = useState<CustomerHandled[]>(() => loadFromStorage("customers", []));
-  const [leaves, setLeaves] = useState<LeaveRequest[]>(() => loadFromStorage("leaves", []));
+  const [staff, setStaff] = useState<Staff[]>([]);
+  const [attendance, setAttendance] = useState<Attendance[]>([]);
+  const [salaries, setSalaries] = useState<Salary[]>([]);
+  const [customers, setCustomers] = useState<CustomerHandled[]>([]);
+  const [leaves, setLeaves] = useState<LeaveRequest[]>([]);
   const [attFilter, setAttFilter] = useState<"harian" | "mingguan" | "bulanan">("harian");
 
   // Staff modal state
@@ -111,11 +100,29 @@ export default function AdminDashboard() {
     if (!loading && user?.role !== "admin") router.replace("/dashboard");
   }, [user, loading, router]);
 
-  useEffect(() => { saveToStorage("staff", staff); }, [staff]);
-  useEffect(() => { saveToStorage("attendance", attendance); }, [attendance]);
-  useEffect(() => { saveToStorage("salaries", salaries); }, [salaries]);
-  useEffect(() => { saveToStorage("customers", customers); }, [customers]);
-  useEffect(() => { saveToStorage("leaves", leaves); }, [leaves]);
+  useEffect(() => {
+    if (user?.role !== "admin") return;
+    Promise.all([
+      ds.loadStaff(),
+      ds.loadAttendance(),
+      ds.loadSalaries(),
+      ds.loadCustomers(),
+      ds.loadLeaves(),
+    ]).then(([s, a, sal, c, l]) => {
+      setStaff(s);
+      setAttendance(a);
+      setSalaries(sal);
+      setCustomers(c);
+      setLeaves(l);
+      setDataLoaded(true);
+    });
+  }, [user]);
+
+  useEffect(() => { if (dataLoaded) ds.saveStaff(staff); }, [staff, dataLoaded]);
+  useEffect(() => { if (dataLoaded) ds.saveAttendance(attendance); }, [attendance, dataLoaded]);
+  useEffect(() => { if (dataLoaded) ds.saveSalaries(salaries); }, [salaries, dataLoaded]);
+  useEffect(() => { if (dataLoaded) ds.saveCustomers(customers); }, [customers, dataLoaded]);
+  useEffect(() => { if (dataLoaded) ds.saveLeaves(leaves); }, [leaves, dataLoaded]);
 
   if (loading || !user || user.role !== "admin") {
     return (
@@ -152,6 +159,11 @@ export default function AdminDashboard() {
 
   function saveStaff() {
     if (!staffForm.nama || !staffForm.email) return;
+    if (isSupabaseEnabled && !editStaffId) {
+      alert("Di mode Supabase, staff harus daftar sendiri via halaman login.\n\nAdmin bisa menambah staff via menu Authentication di dashboard Supabase.");
+      setShowStaffModal(false);
+      return;
+    }
     if (editStaffId) {
       setStaff((prev) =>
         prev.map((s) =>
@@ -162,7 +174,7 @@ export default function AdminDashboard() {
       setStaff((prev) => [
         ...prev,
         {
-          id: "s-" + uid(),
+          id: uid(),
           nama: staffForm.nama,
           email: staffForm.email,
           role: "staff",
@@ -180,6 +192,7 @@ export default function AdminDashboard() {
 
   function deleteStaff(id: string) {
     setStaff((prev) => prev.filter((s) => s.id !== id));
+    ds.deleteStaffRow(id);
   }
 
   // ---- Attendance ----
@@ -203,6 +216,7 @@ export default function AdminDashboard() {
 
   function deleteAttendance(id: string) {
     setAttendance((prev) => prev.filter((a) => a.id !== id));
+    ds.deleteAttendanceRow(id);
   }
 
   // ---- Salary ----
@@ -230,6 +244,7 @@ export default function AdminDashboard() {
 
   function deleteSalary(id: string) {
     setSalaries((prev) => prev.filter((s) => s.id !== id));
+    ds.deleteSalaryRow(id);
   }
 
   // ---- Customer ----
@@ -256,6 +271,7 @@ export default function AdminDashboard() {
 
   function deleteCustomer(id: string) {
     setCustomers((prev) => prev.filter((c) => c.id !== id));
+    ds.deleteCustomerRow(id);
   }
 
   // ---- Leave ----
@@ -263,10 +279,12 @@ export default function AdminDashboard() {
     setLeaves((prev) =>
       prev.map((l) => (l.id === id ? { ...l, status } : l))
     );
+    ds.updateLeaveStatus(id, status);
   }
 
   function deleteLeave(id: string) {
     setLeaves((prev) => prev.filter((l) => l.id !== id));
+    ds.deleteLeaveRow(id);
   }
 
   return (
