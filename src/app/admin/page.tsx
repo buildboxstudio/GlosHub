@@ -41,6 +41,28 @@ function uid() {
   return Math.random().toString(36).slice(2, 8);
 }
 
+function ModalOverlay({
+  title,
+  onClose,
+  children,
+}: {
+  title: string;
+  onClose: () => void;
+  children: React.ReactNode;
+}) {
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70">
+      <div className="w-full max-w-md border-4 border-ink-600 bg-ink-900 p-6 pixel-card">
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="font-pixel text-[9px] text-neon-pink">{title}</h2>
+          <button onClick={onClose} className="font-pixel text-[8px] text-neon-red">✕</button>
+        </div>
+        {children}
+      </div>
+    </div>
+  );
+}
+
 export default function AdminDashboard() {
   const router = useRouter();
   const { user, loading } = useAuth();
@@ -227,36 +249,13 @@ export default function AdminDashboard() {
     setLeaves((prev) => prev.filter((l) => l.id !== id));
   }
 
-  // ---- Modal overlay ----
-  function Modal({
-    title,
-    onClose,
-    children,
-  }: {
-    title: string;
-    onClose: () => void;
-    children: React.ReactNode;
-  }) {
-    return (
-      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70">
-        <div className="w-full max-w-md border-4 border-ink-600 bg-ink-900 p-6 pixel-card">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="font-pixel text-[9px] text-neon-pink">{title}</h2>
-            <button onClick={onClose} className="font-pixel text-[8px] text-neon-red">✕</button>
-          </div>
-          {children}
-        </div>
-      </div>
-    );
-  }
-
   return (
     <div className="relative min-h-screen pb-16">
       <PixelBackground />
       <HudBar subtitle="ADMIN CONTROL ROOM" />
 
       {showStaffModal && (
-        <Modal title={editStaffId ? "EDIT STAFF" : "TAMBAH STAFF"} onClose={() => setShowStaffModal(false)}>
+        <ModalOverlay title={editStaffId ? "EDIT STAFF" : "TAMBAH STAFF"} onClose={() => setShowStaffModal(false)}>
           <div className="space-y-3 font-body text-base">
             <input className="pixel-input" placeholder="Nama" value={staffForm.nama}
               onChange={(e) => setStaffForm({ ...staffForm, nama: e.target.value })} />
@@ -279,11 +278,11 @@ export default function AdminDashboard() {
               {editStaffId ? "SIMPAN" : "TAMBAH"}
             </PixelButton>
           </div>
-        </Modal>
+        </ModalOverlay>
       )}
 
       {showAttModal && (
-        <Modal title="TAMBAH ABSENSI" onClose={() => setShowAttModal(false)}>
+        <ModalOverlay title="TAMBAH ABSENSI" onClose={() => setShowAttModal(false)}>
           <div className="space-y-3 font-body text-base">
             <select className="pixel-input" value={attForm.staff_id}
               onChange={(e) => setAttForm({ ...attForm, staff_id: e.target.value })}>
@@ -312,11 +311,11 @@ export default function AdminDashboard() {
               TAMBAH
             </PixelButton>
           </div>
-        </Modal>
+        </ModalOverlay>
       )}
 
       {showCustModal && (
-        <Modal title="TAMBAH CUSTOMER" onClose={() => setShowCustModal(false)}>
+        <ModalOverlay title="TAMBAH CUSTOMER" onClose={() => setShowCustModal(false)}>
           <div className="space-y-3 font-body text-base">
             <select className="pixel-input" value={custForm.staff_id}
               onChange={(e) => setCustForm({ ...custForm, staff_id: e.target.value })}>
@@ -333,11 +332,11 @@ export default function AdminDashboard() {
               TAMBAH
             </PixelButton>
           </div>
-        </Modal>
+        </ModalOverlay>
       )}
 
       {showSalaryModal && (
-        <Modal title="TAMBAH GAJI" onClose={() => setShowSalaryModal(false)}>
+        <ModalOverlay title="TAMBAH GAJI" onClose={() => setShowSalaryModal(false)}>
           <div className="space-y-3 font-body text-base">
             <select className="pixel-input" value={salaryForm.staff_id}
               onChange={(e) => setSalaryForm({ ...salaryForm, staff_id: e.target.value })}>
@@ -354,7 +353,7 @@ export default function AdminDashboard() {
               TAMBAH
             </PixelButton>
           </div>
-        </Modal>
+        </ModalOverlay>
       )}
 
       <div className="mx-auto max-w-6xl px-4 pt-6 space-y-6">
