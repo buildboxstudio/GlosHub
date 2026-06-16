@@ -9,14 +9,16 @@ import PixelButton from "@/components/pixel/PixelButton";
 import Leaderboard from "@/components/Leaderboard";
 import { useAuth } from "@/lib/auth";
 import {
-  MOCK_ATTENDANCE,
-  MOCK_CUSTOMERS,
-  MOCK_LEAVE,
-  MOCK_SALARY,
-  MOCK_STAFF,
-} from "@/lib/mockData";
-import { LeaveRequest, RequestStatus, Staff } from "@/lib/types";
-import { rupiah, STATUS_COLOR, STATUS_LABEL } from "@/lib/format";
+  Attendance,
+  AttendanceStatus,
+  CustomerHandled,
+  LeaveRequest,
+  LeaveType,
+  RequestStatus,
+  Salary,
+  Staff,
+} from "@/lib/types";
+import { rupiah, todayISO, STATUS_COLOR, STATUS_LABEL } from "@/lib/format";
 
 type Tab =
   | "staff"
@@ -35,16 +37,38 @@ const TABS: { key: Tab; label: string; icon: string }[] = [
   { key: "reports", label: "REPORTS", icon: "📊" },
 ];
 
+function uid() {
+  return Math.random().toString(36).slice(2, 8);
+}
+
 export default function AdminDashboard() {
   const router = useRouter();
   const { user, loading } = useAuth();
   const [tab, setTab] = useState<Tab>("staff");
 
-  const [staff, setStaff] = useState<Staff[]>(MOCK_STAFF);
-  const [leaves, setLeaves] = useState<LeaveRequest[]>(MOCK_LEAVE);
-  const [attFilter, setAttFilter] = useState<"harian" | "mingguan" | "bulanan">(
-    "harian"
-  );
+  const [staff, setStaff] = useState<Staff[]>([]);
+  const [attendance, setAttendance] = useState<Attendance[]>([]);
+  const [salaries, setSalaries] = useState<Salary[]>([]);
+  const [customers, setCustomers] = useState<CustomerHandled[]>([]);
+  const [leaves, setLeaves] = useState<LeaveRequest[]>([]);
+  const [attFilter, setAttFilter] = useState<"harian" | "mingguan" | "bulanan">("harian");
+
+  // Staff modal state
+  const [showStaffModal, setShowStaffModal] = useState(false);
+  const [editStaffId, setEditStaffId] = useState<string | null>(null);
+  const [staffForm, setStaffForm] = useState({ nama: "", email: "", jabatan: "", avatar: "therapist" });
+
+  // Attendance modal
+  const [showAttModal, setShowAttModal] = useState(false);
+  const [attForm, setAttForm] = useState({ staff_id: "", tanggal: todayISO(), check_in: "", check_out: "", status: "hadir" as AttendanceStatus, lokasi: "" });
+
+  // Customer modal
+  const [showCustModal, setShowCustModal] = useState(false);
+  const [custForm, setCustForm] = useState({ staff_id: "", tanggal: todayISO(), jumlah_customer: 0 });
+
+  // Salary modal
+  const [showSalaryModal, setShowSalaryModal] = useState(false);
+  const [salaryForm, setSalaryForm] = useState({ staff_id: "", gaji_harian: 150000, bonus: 0 });
 
   useEffect(() => {
     if (!loading && !user) router.replace("/");
@@ -65,15 +89,164 @@ export default function AdminDashboard() {
     return staff.find((s) => s.id === id)?.nama ?? id;
   }
 
+  // ---- Staff ----
   function toggleActive(id: string) {
     setStaff((prev) =>
       prev.map((s) => (s.id === id ? { ...s, active: !s.active } : s))
     );
   }
 
+  function openAddStaff() {
+    setEditStaffId(null);
+    setStaffForm({ nama: "", email: "", jabatan: "", avatar: "therapist" });
+    setShowStaffModal(true);
+  }
+
+  function openEditStaff(s: Staff) {
+    setEditStaffId(s.id);
+    setStaffForm({ nama: s.nama, email: s.email, jabatan: s.jabatan, avatar: s.avatar });
+    setShowStaffModal(true);
+  }
+
+  function saveStaff() {
+    if (!staffForm.nama || !staffForm.email) return;
+    if (editStaffId) {
+      setStaff((prev) =>
+        prev.map((s) =>
+          s.id === editStaffId ? { ...s, ...staffForm } : s
+        )
+      );
+    } else {
+      setStaff((prev) => [
+        ...prev,
+        {
+          id: "s-" + uid(),
+          nama: staffForm.nama,
+          email: staffForm.email,
+          role: "staff",
+          jabatan: staffForm.jabatan,
+          level: 1,
+          xp: 0,
+          xp_to_next: 1000,
+          avatar: staffForm.avatar,
+          active: true,
+        },
+      ]);
+    }
+    setShowStaffModal(false);
+  }
+
+  function deleteStaff(id: string) {
+    setStaff((prev) => prev.filter((s) => s.id !== id));
+  }
+
+  // ---- Attendance ----
+  function addAttendance() {
+    if (!attForm.staff_id) return;
+    setAttendance((prev) => [
+      ...prev,
+      {
+        id: "a-" + uid(),
+        staff_id: attForm.staff_id,
+        tanggal: attForm.tanggal,
+        check_in: attForm.check_in || null,
+        check_out: attForm.check_out || null,
+        status: attForm.status,
+        lokasi: attForm.lokasi || null,
+      },
+    ]);
+    setShowAttModal(false);
+    setAttForm({ staff_id: "", tanggal: todayISO(), check_in: "", check_out: "", status: "hadir", lokasi: "" });
+  }
+
+  function deleteAttendance(id: string) {
+    setAttendance((prev) => prev.filter((a) => a.id !== id));
+  }
+
+  // ---- Salary ----
+  function addSalary() {
+    if (!salaryForm.staff_id) return;
+    setSalaries((prev) => [
+      ...prev,
+      {
+        id: "g-" + uid(),
+        staff_id: salaryForm.staff_id,
+        tanggal: todayISO(),
+        gaji_harian: salaryForm.gaji_harian,
+        bonus: salaryForm.bonus,
+      },
+    ]);
+    setShowSalaryModal(false);
+    setSalaryForm({ staff_id: "", gaji_harian: 150000, bonus: 0 });
+  }
+
+  function updateSalary(id: string, field: "gaji_harian" | "bonus", value: number) {
+    setSalaries((prev) =>
+      prev.map((s) => (s.id === id ? { ...s, [field]: value } : s))
+    );
+  }
+
+  function deleteSalary(id: string) {
+    setSalaries((prev) => prev.filter((s) => s.id !== id));
+  }
+
+  // ---- Customer ----
+  function addCustomer() {
+    if (!custForm.staff_id) return;
+    setCustomers((prev) => [
+      ...prev,
+      {
+        id: "c-" + uid(),
+        staff_id: custForm.staff_id,
+        tanggal: custForm.tanggal,
+        jumlah_customer: custForm.jumlah_customer,
+      },
+    ]);
+    setShowCustModal(false);
+    setCustForm({ staff_id: "", tanggal: todayISO(), jumlah_customer: 0 });
+  }
+
+  function updateCustomer(id: string, jumlah_customer: number) {
+    setCustomers((prev) =>
+      prev.map((c) => (c.id === id ? { ...c, jumlah_customer } : c))
+    );
+  }
+
+  function deleteCustomer(id: string) {
+    setCustomers((prev) => prev.filter((c) => c.id !== id));
+  }
+
+  // ---- Leave ----
   function setLeaveStatus(id: string, status: RequestStatus) {
     setLeaves((prev) =>
       prev.map((l) => (l.id === id ? { ...l, status } : l))
+    );
+  }
+
+  function deleteLeave(id: string) {
+    setLeaves((prev) => prev.filter((l) => l.id !== id));
+  }
+
+  // ---- Modal overlay ----
+  function Modal({
+    title,
+    onClose,
+    children,
+  }: {
+    title: string;
+    onClose: () => void;
+    children: React.ReactNode;
+  }) {
+    return (
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70">
+        <div className="w-full max-w-md border-4 border-ink-600 bg-ink-900 p-6 pixel-card">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="font-pixel text-[9px] text-neon-pink">{title}</h2>
+            <button onClick={onClose} className="font-pixel text-[8px] text-neon-red">✕</button>
+          </div>
+          {children}
+        </div>
+      </div>
     );
   }
 
@@ -81,6 +254,108 @@ export default function AdminDashboard() {
     <div className="relative min-h-screen pb-16">
       <PixelBackground />
       <HudBar subtitle="ADMIN CONTROL ROOM" />
+
+      {showStaffModal && (
+        <Modal title={editStaffId ? "EDIT STAFF" : "TAMBAH STAFF"} onClose={() => setShowStaffModal(false)}>
+          <div className="space-y-3 font-body text-base">
+            <input className="pixel-input" placeholder="Nama" value={staffForm.nama}
+              onChange={(e) => setStaffForm({ ...staffForm, nama: e.target.value })} />
+            <input className="pixel-input" placeholder="Email" value={staffForm.email}
+              onChange={(e) => setStaffForm({ ...staffForm, email: e.target.value })} />
+            <input className="pixel-input" placeholder="Jabatan (Nail Artist, Lash Specialist, dll)" value={staffForm.jabatan}
+              onChange={(e) => setStaffForm({ ...staffForm, jabatan: e.target.value })} />
+            <div>
+              <p className="text-neon-cyan/70 text-sm mb-1">Avatar</p>
+              <div className="flex gap-2">
+                {["therapist", "lash", "boss"].map((a) => (
+                  <button key={a} onClick={() => setStaffForm({ ...staffForm, avatar: a })}
+                    className={`border-2 px-3 py-1 font-pixel text-[8px] ${staffForm.avatar === a ? "border-neon-cyan text-neon-cyan" : "border-ink-600 text-neon-cyan/50"}`}>
+                    {a.toUpperCase()}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <PixelButton variant="mint" onClick={saveStaff} className="!text-[8px] w-full">
+              {editStaffId ? "SIMPAN" : "TAMBAH"}
+            </PixelButton>
+          </div>
+        </Modal>
+      )}
+
+      {showAttModal && (
+        <Modal title="TAMBAH ABSENSI" onClose={() => setShowAttModal(false)}>
+          <div className="space-y-3 font-body text-base">
+            <select className="pixel-input" value={attForm.staff_id}
+              onChange={(e) => setAttForm({ ...attForm, staff_id: e.target.value })}>
+              <option value="">-- Pilih Staff --</option>
+              {staff.filter((s) => s.role === "staff" && s.active).map((s) => (
+                <option key={s.id} value={s.id}>{s.nama}</option>
+              ))}
+            </select>
+            <input className="pixel-input" type="date" value={attForm.tanggal}
+              onChange={(e) => setAttForm({ ...attForm, tanggal: e.target.value })} />
+            <input className="pixel-input" type="time" placeholder="Check In" value={attForm.check_in}
+              onChange={(e) => setAttForm({ ...attForm, check_in: e.target.value })} />
+            <input className="pixel-input" type="time" placeholder="Check Out" value={attForm.check_out}
+              onChange={(e) => setAttForm({ ...attForm, check_out: e.target.value })} />
+            <select className="pixel-input" value={attForm.status}
+              onChange={(e) => setAttForm({ ...attForm, status: e.target.value as AttendanceStatus })}>
+              <option value="hadir">HADIR</option>
+              <option value="terlambat">TERLAMBAT</option>
+              <option value="izin">IZIN</option>
+              <option value="sakit">SAKIT</option>
+              <option value="cuti">CUTI</option>
+            </select>
+            <input className="pixel-input" placeholder="Lokasi" value={attForm.lokasi}
+              onChange={(e) => setAttForm({ ...attForm, lokasi: e.target.value })} />
+            <PixelButton variant="cyan" onClick={addAttendance} className="!text-[8px] w-full">
+              TAMBAH
+            </PixelButton>
+          </div>
+        </Modal>
+      )}
+
+      {showCustModal && (
+        <Modal title="TAMBAH CUSTOMER" onClose={() => setShowCustModal(false)}>
+          <div className="space-y-3 font-body text-base">
+            <select className="pixel-input" value={custForm.staff_id}
+              onChange={(e) => setCustForm({ ...custForm, staff_id: e.target.value })}>
+              <option value="">-- Pilih Staff --</option>
+              {staff.filter((s) => s.role === "staff" && s.active).map((s) => (
+                <option key={s.id} value={s.id}>{s.nama}</option>
+              ))}
+            </select>
+            <input className="pixel-input" type="date" value={custForm.tanggal}
+              onChange={(e) => setCustForm({ ...custForm, tanggal: e.target.value })} />
+            <input className="pixel-input" type="number" placeholder="Jumlah Customer" value={custForm.jumlah_customer}
+              onChange={(e) => setCustForm({ ...custForm, jumlah_customer: Number(e.target.value) })} />
+            <PixelButton variant="pink" onClick={addCustomer} className="!text-[8px] w-full">
+              TAMBAH
+            </PixelButton>
+          </div>
+        </Modal>
+      )}
+
+      {showSalaryModal && (
+        <Modal title="TAMBAH GAJI" onClose={() => setShowSalaryModal(false)}>
+          <div className="space-y-3 font-body text-base">
+            <select className="pixel-input" value={salaryForm.staff_id}
+              onChange={(e) => setSalaryForm({ ...salaryForm, staff_id: e.target.value })}>
+              <option value="">-- Pilih Staff --</option>
+              {staff.filter((s) => s.role === "staff" && s.active).map((s) => (
+                <option key={s.id} value={s.id}>{s.nama}</option>
+              ))}
+            </select>
+            <input className="pixel-input" type="number" placeholder="Gaji Harian" value={salaryForm.gaji_harian}
+              onChange={(e) => setSalaryForm({ ...salaryForm, gaji_harian: Number(e.target.value) })} />
+            <input className="pixel-input" type="number" placeholder="Bonus" value={salaryForm.bonus}
+              onChange={(e) => setSalaryForm({ ...salaryForm, bonus: Number(e.target.value) })} />
+            <PixelButton variant="yellow" onClick={addSalary} className="!text-[8px] w-full">
+              TAMBAH
+            </PixelButton>
+          </div>
+        </Modal>
+      )}
 
       <div className="mx-auto max-w-6xl px-4 pt-6 space-y-6">
         <PixelCard accent="purple" className="!p-4">
@@ -94,7 +369,6 @@ export default function AdminDashboard() {
           </div>
         </PixelCard>
 
-        {/* Tabs */}
         <div className="flex flex-wrap gap-2">
           {TABS.map((t) => (
             <PixelButton
@@ -112,61 +386,66 @@ export default function AdminDashboard() {
         {tab === "staff" && (
           <PixelCard title="STAFF MANAGEMENT" badge="MENU" accent="mint">
             <div className="mb-4 flex justify-end">
-              <PixelButton variant="mint" className="!text-[8px]">
+              <PixelButton variant="mint" className="!text-[8px]" onClick={openAddStaff}>
                 + TAMBAH STAFF
               </PixelButton>
             </div>
-            <div className="overflow-x-auto">
-              <table className="w-full font-body text-base">
-                <thead>
-                  <tr className="font-pixel text-[7px] text-neon-cyan text-left">
-                    <th className="p-2">NAMA</th>
-                    <th className="p-2">JABATAN</th>
-                    <th className="p-2">LVL</th>
-                    <th className="p-2">STATUS</th>
-                    <th className="p-2">AKSI</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {staff
-                    .filter((s) => s.role === "staff")
-                    .map((s) => (
-                      <tr key={s.id} className="border-t-2 border-ink-600">
-                        <td className="p-2 text-neon-mint">{s.nama}</td>
-                        <td className="p-2">{s.jabatan}</td>
-                        <td className="p-2 text-neon-yellow">{s.level}</td>
-                        <td className="p-2">
-                          <span
-                            className={
-                              s.active ? "text-neon-mint" : "text-neon-red"
-                            }
-                          >
-                            {s.active ? "AKTIF" : "NONAKTIF"}
-                          </span>
-                        </td>
-                        <td className="p-2 flex gap-1">
-                          <button className="font-pixel text-[7px] border-2 border-neon-cyan text-neon-cyan px-2 py-1">
-                            EDIT
-                          </button>
-                          <button
-                            onClick={() => toggleActive(s.id)}
-                            className="font-pixel text-[7px] border-2 border-neon-red text-neon-red px-2 py-1"
-                          >
-                            {s.active ? "OFF" : "ON"}
-                          </button>
-                        </td>
-                      </tr>
-                    ))}
-                </tbody>
-              </table>
-            </div>
+            {staff.filter((s) => s.role === "staff").length === 0 ? (
+              <p className="font-body text-base text-neon-cyan/50 text-center py-6">
+                Belum ada staff. Klik "TAMBAH STAFF" untuk mulai.
+              </p>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full font-body text-base">
+                  <thead>
+                    <tr className="font-pixel text-[7px] text-neon-cyan text-left">
+                      <th className="p-2">NAMA</th>
+                      <th className="p-2">JABATAN</th>
+                      <th className="p-2">LVL</th>
+                      <th className="p-2">STATUS</th>
+                      <th className="p-2">AKSI</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {staff
+                      .filter((s) => s.role === "staff")
+                      .map((s) => (
+                        <tr key={s.id} className="border-t-2 border-ink-600">
+                          <td className="p-2 text-neon-mint">{s.nama}</td>
+                          <td className="p-2">{s.jabatan}</td>
+                          <td className="p-2 text-neon-yellow">{s.level}</td>
+                          <td className="p-2">
+                            <span className={s.active ? "text-neon-mint" : "text-neon-red"}>
+                              {s.active ? "AKTIF" : "NONAKTIF"}
+                            </span>
+                          </td>
+                          <td className="p-2 flex gap-1 flex-wrap">
+                            <button onClick={() => openEditStaff(s)}
+                              className="font-pixel text-[7px] border-2 border-neon-cyan text-neon-cyan px-2 py-1">
+                              EDIT
+                            </button>
+                            <button onClick={() => toggleActive(s.id)}
+                              className="font-pixel text-[7px] border-2 border-neon-yellow text-neon-yellow px-2 py-1">
+                              {s.active ? "OFF" : "ON"}
+                            </button>
+                            <button onClick={() => deleteStaff(s.id)}
+                              className="font-pixel text-[7px] border-2 border-neon-red text-neon-red px-2 py-1">
+                              HAPUS
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
           </PixelCard>
         )}
 
         {/* ===== Attendance Management ===== */}
         {tab === "attendance" && (
           <PixelCard title="ATTENDANCE MANAGEMENT" badge="MENU" accent="cyan">
-            <div className="mb-4 flex gap-2">
+            <div className="mb-4 flex gap-2 flex-wrap items-center">
               {(["harian", "mingguan", "bulanan"] as const).map((f) => (
                 <button
                   key={f}
@@ -180,171 +459,194 @@ export default function AdminDashboard() {
                   {f}
                 </button>
               ))}
+              <div className="ml-auto">
+                <PixelButton variant="cyan" className="!text-[8px]" onClick={() => setShowAttModal(true)}>
+                  + TAMBAH ABSENSI
+                </PixelButton>
+              </div>
             </div>
-            <div className="overflow-x-auto">
-              <table className="w-full font-body text-base">
-                <thead>
-                  <tr className="font-pixel text-[7px] text-neon-cyan text-left">
-                    <th className="p-2">STAFF</th>
-                    <th className="p-2">TANGGAL</th>
-                    <th className="p-2">IN</th>
-                    <th className="p-2">OUT</th>
-                    <th className="p-2">STATUS</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {MOCK_ATTENDANCE.map((a) => (
-                    <tr key={a.id} className="border-t-2 border-ink-600">
-                      <td className="p-2 text-neon-mint">{nameOf(a.staff_id)}</td>
-                      <td className="p-2">{a.tanggal}</td>
-                      <td className="p-2 text-neon-mint">{a.check_in ?? "-"}</td>
-                      <td className="p-2 text-neon-pink">{a.check_out ?? "-"}</td>
-                      <td className={`p-2 font-pixel text-[8px] ${STATUS_COLOR[a.status]}`}>
-                        {STATUS_LABEL[a.status]}
-                      </td>
+            {attendance.length === 0 ? (
+              <p className="font-body text-base text-neon-cyan/50 text-center py-6">
+                Belum ada data absensi. Klik "TAMBAH ABSENSI" untuk mulai.
+              </p>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full font-body text-base">
+                  <thead>
+                    <tr className="font-pixel text-[7px] text-neon-cyan text-left">
+                      <th className="p-2">STAFF</th>
+                      <th className="p-2">TANGGAL</th>
+                      <th className="p-2">IN</th>
+                      <th className="p-2">OUT</th>
+                      <th className="p-2">STATUS</th>
+                      <th className="p-2">AKSI</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+                  </thead>
+                  <tbody>
+                    {attendance.map((a) => (
+                      <tr key={a.id} className="border-t-2 border-ink-600">
+                        <td className="p-2 text-neon-mint">{nameOf(a.staff_id)}</td>
+                        <td className="p-2">{a.tanggal}</td>
+                        <td className="p-2 text-neon-mint">{a.check_in ?? "-"}</td>
+                        <td className="p-2 text-neon-pink">{a.check_out ?? "-"}</td>
+                        <td className={`p-2 font-pixel text-[8px] ${STATUS_COLOR[a.status]}`}>
+                          {STATUS_LABEL[a.status]}
+                        </td>
+                        <td className="p-2">
+                          <button onClick={() => deleteAttendance(a.id)}
+                            className="font-pixel text-[7px] border-2 border-neon-red text-neon-red px-2 py-1">
+                            HAPUS
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
           </PixelCard>
         )}
 
         {/* ===== Salary Management ===== */}
         {tab === "salary" && (
           <PixelCard title="SALARY MANAGEMENT" badge="MENU" accent="yellow">
-            <div className="space-y-3">
-              {staff
-                .filter((s) => s.role === "staff")
-                .map((s) => {
-                  const sal = MOCK_SALARY.find((g) => g.staff_id === s.id);
+            <div className="mb-4 flex justify-end">
+              <PixelButton variant="yellow" className="!text-[8px]" onClick={() => setShowSalaryModal(true)}>
+                + TAMBAH GAJI
+              </PixelButton>
+            </div>
+            {salaries.length === 0 ? (
+              <p className="font-body text-base text-neon-cyan/50 text-center py-6">
+                Belum ada data gaji. Klik "TAMBAH GAJI" untuk mulai.
+              </p>
+            ) : (
+              <div className="space-y-3">
+                {salaries.map((sal) => {
+                  const s = staff.find((x) => x.id === sal.staff_id);
                   return (
-                    <div
-                      key={s.id}
+                    <div key={sal.id}
                       className="grid grid-cols-2 sm:grid-cols-4 gap-2 border-2 border-ink-600 p-3 items-center"
                     >
                       <span className="text-neon-mint font-body text-base">
-                        {s.nama}
+                        {s?.nama ?? sal.staff_id}
                       </span>
                       <label className="font-body text-sm">
                         <span className="text-neon-cyan/70 block text-xs">Gaji Harian</span>
-                        <input
-                          type="number"
-                          defaultValue={sal?.gaji_harian ?? 150000}
-                          className="pixel-input !py-1 !text-base"
-                        />
+                        <input type="number" value={sal.gaji_harian}
+                          onChange={(e) => updateSalary(sal.id, "gaji_harian", Number(e.target.value))}
+                          className="pixel-input !py-1 !text-base" />
                       </label>
                       <label className="font-body text-sm">
                         <span className="text-neon-cyan/70 block text-xs">Bonus</span>
-                        <input
-                          type="number"
-                          defaultValue={sal?.bonus ?? 0}
-                          className="pixel-input !py-1 !text-base"
-                        />
+                        <input type="number" value={sal.bonus}
+                          onChange={(e) => updateSalary(sal.id, "bonus", Number(e.target.value))}
+                          className="pixel-input !py-1 !text-base" />
                       </label>
-                      <label className="font-body text-sm">
-                        <span className="text-neon-cyan/70 block text-xs">Insentif</span>
-                        <input
-                          type="number"
-                          defaultValue={0}
-                          className="pixel-input !py-1 !text-base"
-                        />
-                      </label>
+                      <button onClick={() => deleteSalary(sal.id)}
+                        className="font-pixel text-[7px] border-2 border-neon-red text-neon-red px-2 py-1 h-fit">
+                        HAPUS
+                      </button>
                     </div>
                   );
                 })}
-            </div>
-            <div className="mt-4 flex justify-end">
-              <PixelButton variant="yellow" className="!text-[8px]">
-                SIMPAN GAJI
-              </PixelButton>
-            </div>
+              </div>
+            )}
           </PixelCard>
         )}
 
-        {/* ===== Customer Handling Management ===== */}
+        {/* ===== Customer Handling ===== */}
         {tab === "customer" && (
           <PixelCard title="CUSTOMER HANDLING" badge="MENU" accent="pink">
-            <div className="space-y-3">
-              {staff
-                .filter((s) => s.role === "staff")
-                .map((s) => {
-                  const c = MOCK_CUSTOMERS.find((x) => x.staff_id === s.id);
+            <div className="mb-4 flex justify-end">
+              <PixelButton variant="pink" className="!text-[8px]" onClick={() => setShowCustModal(true)}>
+                + TAMBAH CUSTOMER
+              </PixelButton>
+            </div>
+            {customers.length === 0 ? (
+              <p className="font-body text-base text-neon-cyan/50 text-center py-6">
+                Belum ada data customer. Klik "TAMBAH CUSTOMER" untuk mulai.
+              </p>
+            ) : (
+              <div className="space-y-3">
+                {customers.map((c) => {
+                  const s = staff.find((x) => x.id === c.staff_id);
                   return (
-                    <div
-                      key={s.id}
+                    <div key={c.id}
                       className="flex items-center justify-between border-2 border-ink-600 p-3"
                     >
                       <span className="text-neon-mint font-body text-base">
-                        {s.nama}
+                        {s?.nama ?? c.staff_id}
                       </span>
-                      <label className="flex items-center gap-2 font-body text-base">
-                        <span className="text-neon-cyan/70 text-sm">Customer hari ini</span>
-                        <input
-                          type="number"
-                          defaultValue={c?.jumlah_customer ?? 0}
-                          className="pixel-input !w-24 !py-1 !text-base"
-                        />
-                      </label>
+                      <div className="flex items-center gap-2">
+                        <label className="flex items-center gap-2 font-body text-base">
+                          <span className="text-neon-cyan/70 text-sm">Customer</span>
+                          <input type="number" value={c.jumlah_customer}
+                            onChange={(e) => updateCustomer(c.id, Number(e.target.value))}
+                            className="pixel-input !w-24 !py-1 !text-base" />
+                        </label>
+                        <button onClick={() => deleteCustomer(c.id)}
+                          className="font-pixel text-[7px] border-2 border-neon-red text-neon-red px-2 py-1">
+                          HAPUS
+                        </button>
+                      </div>
                     </div>
                   );
                 })}
-            </div>
-            <div className="mt-4 flex justify-end">
-              <PixelButton variant="pink" className="!text-[8px]">
-                UPDATE CUSTOMER
-              </PixelButton>
-            </div>
+              </div>
+            )}
           </PixelCard>
         )}
 
         {/* ===== Approval Center ===== */}
         {tab === "approval" && (
           <PixelCard title="APPROVAL CENTER" badge="MENU" accent="mint">
-            <ul className="space-y-2">
-              {leaves.map((l) => (
-                <li
-                  key={l.id}
-                  className="flex flex-wrap items-center justify-between gap-3 border-2 border-ink-600 p-3 font-body text-base"
-                >
-                  <div>
-                    <span className="text-neon-mint">{nameOf(l.staff_id)}</span>{" "}
-                    · <span className="uppercase text-neon-cyan">{l.jenis}</span>{" "}
-                    · {l.tanggal}
-                    <p className="text-neon-cyan/60 text-sm">{l.alasan}</p>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <span
-                      className={`font-pixel text-[7px] px-2 py-1 border-2 ${
+            {leaves.length === 0 ? (
+              <p className="font-body text-base text-neon-cyan/50 text-center py-6">
+                Belum ada pengajuan ijin.
+              </p>
+            ) : (
+              <ul className="space-y-2">
+                {leaves.map((l) => (
+                  <li key={l.id}
+                    className="flex flex-wrap items-center justify-between gap-3 border-2 border-ink-600 p-3 font-body text-base"
+                  >
+                    <div>
+                      <span className="text-neon-mint">{nameOf(l.staff_id)}</span>{" "}
+                      · <span className="uppercase text-neon-cyan">{l.jenis}</span>{" "}
+                      · {l.tanggal}
+                      <p className="text-neon-cyan/60 text-sm">{l.alasan}</p>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className={`font-pixel text-[7px] px-2 py-1 border-2 ${
                         l.status === "approved"
                           ? "border-neon-mint text-neon-mint"
                           : l.status === "rejected"
                           ? "border-neon-red text-neon-red"
                           : "border-neon-yellow text-neon-yellow"
-                      }`}
-                    >
-                      {l.status.toUpperCase()}
-                    </span>
-                    {l.status === "pending" && (
-                      <>
-                        <button
-                          onClick={() => setLeaveStatus(l.id, "approved")}
-                          className="font-pixel text-[7px] border-2 border-neon-mint text-neon-mint px-2 py-1"
-                        >
-                          OK
-                        </button>
-                        <button
-                          onClick={() => setLeaveStatus(l.id, "rejected")}
-                          className="font-pixel text-[7px] border-2 border-neon-red text-neon-red px-2 py-1"
-                        >
-                          NO
-                        </button>
-                      </>
-                    )}
-                  </div>
-                </li>
-              ))}
-            </ul>
+                      }`}>
+                        {l.status.toUpperCase()}
+                      </span>
+                      {l.status === "pending" && (
+                        <>
+                          <button onClick={() => setLeaveStatus(l.id, "approved")}
+                            className="font-pixel text-[7px] border-2 border-neon-mint text-neon-mint px-2 py-1">
+                            OK
+                          </button>
+                          <button onClick={() => setLeaveStatus(l.id, "rejected")}
+                            className="font-pixel text-[7px] border-2 border-neon-red text-neon-red px-2 py-1">
+                            NO
+                          </button>
+                        </>
+                      )}
+                      <button onClick={() => deleteLeave(l.id)}
+                        className="font-pixel text-[7px] border-2 border-neon-red text-neon-red px-2 py-1">
+                        HAPUS
+                      </button>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            )}
           </PixelCard>
         )}
 
@@ -378,7 +680,6 @@ export default function AdminDashboard() {
           </PixelCard>
         )}
 
-        {/* Leaderboard always visible */}
         <Leaderboard />
       </div>
     </div>

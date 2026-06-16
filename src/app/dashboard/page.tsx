@@ -11,20 +11,13 @@ import PixelButton from "@/components/pixel/PixelButton";
 import PixelProgress from "@/components/pixel/PixelProgress";
 import Leaderboard from "@/components/Leaderboard";
 import { useAuth } from "@/lib/auth";
-import {
-  MOCK_CUSTOMERS,
-  MOCK_MONTHLY,
-  MOCK_SALARY,
-  badgesFor,
-} from "@/lib/mockData";
-import { AttendanceStatus, LeaveRequest, LeaveType } from "@/lib/types";
+import { AttendanceStatus, Badge, LeaveRequest, LeaveType } from "@/lib/types";
 import { nowHM, rupiah, STATUS_COLOR, STATUS_LABEL, todayISO } from "@/lib/format";
 
 export default function StaffDashboard() {
   const router = useRouter();
   const { user, loading } = useAuth();
 
-  // Mission 01 - attendance local state
   const [checkIn, setCheckIn] = useState<string | null>(null);
   const [checkOut, setCheckOut] = useState<string | null>(null);
   const [status, setStatus] = useState<AttendanceStatus>("hadir");
@@ -32,7 +25,6 @@ export default function StaffDashboard() {
   const [useSelfie, setUseSelfie] = useState(false);
   const [gps, setGps] = useState<string>("");
 
-  // Mission 07 - leave requests
   const [leaves, setLeaves] = useState<LeaveRequest[]>([]);
   const [leaveType, setLeaveType] = useState<LeaveType>("izin");
   const [leaveDate, setLeaveDate] = useState(todayISO());
@@ -45,20 +37,12 @@ export default function StaffDashboard() {
 
   const data = useMemo(() => {
     if (!user) return null;
-    const salary = MOCK_SALARY.find((s) => s.staff_id === user.id) ?? {
-      gaji_harian: 150000,
-      bonus: 0,
+    return {
+      salary: { gaji_harian: 150000, bonus: 0 },
+      customers: 0,
+      monthly: { hadir: 0, terlambat: 0, izin: 0, sakit: 0, cuti: 0 },
+      badges: [] as Badge[],
     };
-    const customers =
-      MOCK_CUSTOMERS.find((c) => c.staff_id === user.id)?.jumlah_customer ?? 0;
-    const monthly = MOCK_MONTHLY[user.id] ?? {
-      hadir: 0,
-      terlambat: 0,
-      izin: 0,
-      sakit: 0,
-      cuti: 0,
-    };
-    return { salary, customers, monthly, badges: badgesFor(user) };
   }, [user]);
 
   if (loading || !user || !data) {
@@ -107,8 +91,6 @@ export default function StaffDashboard() {
   }
 
   const dailyEarnings = data.salary.gaji_harian + data.salary.bonus;
-  const monthlyTotal =
-    (data.salary.gaji_harian + data.salary.bonus) * data.monthly.hadir;
 
   return (
     <div className="relative min-h-screen pb-16">
@@ -116,7 +98,6 @@ export default function StaffDashboard() {
       <HudBar subtitle="PLAYER DASHBOARD" />
 
       <div className="mx-auto max-w-6xl px-4 pt-6 space-y-6">
-        {/* ===== Player header ===== */}
         <PixelCard accent="pink" className="!p-6">
           <div className="flex flex-col items-center gap-5 sm:flex-row sm:items-center">
             <div className="border-4 border-neon-pink bg-ink-900 p-3">
@@ -149,7 +130,6 @@ export default function StaffDashboard() {
         </PixelCard>
 
         <div className="grid gap-6 lg:grid-cols-2">
-          {/* ===== Mission 01 - Attendance ===== */}
           <PixelCard title="ATTENDANCE" badge="MISSION 01" accent="mint">
             <div className="flex items-center justify-between mb-4">
               <div>
@@ -222,7 +202,6 @@ export default function StaffDashboard() {
             </div>
           </PixelCard>
 
-          {/* ===== Mission 02 - Daily Earnings ===== */}
           <PixelCard title="DAILY EARNINGS" badge="MISSION 02" accent="yellow">
             <div className="flex flex-col items-center justify-center py-2">
               <motion.div
@@ -253,7 +232,6 @@ export default function StaffDashboard() {
             </div>
           </PixelCard>
 
-          {/* ===== Mission 03 - Customer Handled ===== */}
           <PixelCard title="CUSTOMER HANDLED" badge="MISSION 03" accent="cyan">
             <div className="flex items-center justify-center gap-4 py-4">
               <motion.span
@@ -273,7 +251,6 @@ export default function StaffDashboard() {
             </p>
           </PixelCard>
 
-          {/* ===== Mission 04 - Attendance Statistics ===== */}
           <PixelCard title="ATTENDANCE STATS" badge="MISSION 04" accent="purple">
             <div className="grid grid-cols-2 gap-2 sm:grid-cols-5">
               {[
@@ -299,7 +276,6 @@ export default function StaffDashboard() {
             </p>
           </PixelCard>
 
-          {/* ===== Mission 05 - Weekly Report ===== */}
           <PixelCard title="WEEKLY QUEST" badge="MISSION 05" accent="mint">
             <p className="font-pixel text-[8px] text-neon-cyan mb-3">
               📜 QUEST SUMMARY BOARD
@@ -307,20 +283,19 @@ export default function StaffDashboard() {
             <ul className="space-y-2 font-body text-base">
               <li className="flex justify-between border-2 border-ink-600 px-3 py-2">
                 <span>Hari Masuk</span>
-                <span className="text-neon-mint">5 / 6 hari</span>
+                <span className="text-neon-mint">- / 6 hari</span>
               </li>
               <li className="flex justify-between border-2 border-ink-600 px-3 py-2">
                 <span>Customer</span>
-                <span className="text-neon-cyan">{data.customers * 5} cust</span>
+                <span className="text-neon-cyan">- cust</span>
               </li>
               <li className="flex justify-between border-2 border-ink-600 px-3 py-2">
                 <span>Pendapatan</span>
-                <span className="text-neon-yellow">{rupiah(dailyEarnings * 5)}</span>
+                <span className="text-neon-yellow">{rupiah(0)}</span>
               </li>
             </ul>
           </PixelCard>
 
-          {/* ===== Mission 06 - Monthly Report ===== */}
           <PixelCard title="MONTHLY BOSS" badge="MISSION 06" accent="pink">
             <p className="font-pixel text-[8px] text-neon-red mb-3 animate-blink">
               ⚔ BOSS BATTLE SUMMARY
@@ -328,25 +303,24 @@ export default function StaffDashboard() {
             <div className="grid grid-cols-2 gap-2 font-body text-base">
               <div className="border-2 border-ink-600 p-2 text-center">
                 <p className="text-neon-cyan/70">Hari Kerja</p>
-                <p className="text-neon-mint text-lg">{data.monthly.hadir}</p>
+                <p className="text-neon-mint text-lg">-</p>
               </div>
               <div className="border-2 border-ink-600 p-2 text-center">
                 <p className="text-neon-cyan/70">Customer</p>
-                <p className="text-neon-cyan text-lg">{data.customers * 22}</p>
+                <p className="text-neon-cyan text-lg">-</p>
               </div>
               <div className="border-2 border-ink-600 p-2 text-center">
                 <p className="text-neon-cyan/70">Pendapatan</p>
-                <p className="text-neon-yellow">{rupiah(monthlyTotal)}</p>
+                <p className="text-neon-yellow">{rupiah(0)}</p>
               </div>
               <div className="border-2 border-ink-600 p-2 text-center">
                 <p className="text-neon-cyan/70">Total Bonus</p>
-                <p className="text-neon-pink">{rupiah(data.salary.bonus * data.monthly.hadir)}</p>
+                <p className="text-neon-pink">{rupiah(0)}</p>
               </div>
             </div>
           </PixelCard>
         </div>
 
-        {/* ===== Mission 07 - Leave Request ===== */}
         <PixelCard title="LEAVE REQUEST" badge="MISSION 07" accent="cyan">
           <p className="font-pixel text-[8px] text-neon-purple mb-3">
             🪟 QUEST REQUEST WINDOW
@@ -393,7 +367,6 @@ export default function StaffDashboard() {
               </div>
               <label className="flex items-center gap-2 font-body text-base cursor-pointer">
                 <input type="file" accept="image/*" className="text-xs" />
-                <span className="sr-only">Upload surat</span>
               </label>
               <PixelButton variant="cyan" type="submit" className="w-full">
                 APPLY LEAVE ▶
@@ -428,33 +401,12 @@ export default function StaffDashboard() {
           </div>
         </PixelCard>
 
-        {/* ===== Gamification: Badges ===== */}
         <PixelCard title="ACHIEVEMENT BADGES" badge="GAMIFY" accent="yellow">
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-            {data.badges.map((b) => (
-              <div
-                key={b.key}
-                className={`flex flex-col items-center border-2 p-3 text-center ${
-                  b.earned
-                    ? "border-neon-yellow"
-                    : "border-ink-600 opacity-40 grayscale"
-                }`}
-              >
-                <span className="text-3xl">{b.icon}</span>
-                <p className="font-pixel text-[7px] text-neon-cyan mt-2 leading-tight">
-                  {b.label.toUpperCase()}
-                </p>
-                {b.earned && (
-                  <p className="font-pixel text-[6px] text-neon-mint mt-1">
-                    UNLOCKED
-                  </p>
-                )}
-              </div>
-            ))}
+          <div className="font-body text-base text-neon-cyan/50 border-2 border-dashed border-ink-600 p-3 text-center">
+            Badges akan terbuka setelah ada data
           </div>
         </PixelCard>
 
-        {/* ===== Leaderboard ===== */}
         <Leaderboard />
       </div>
     </div>
