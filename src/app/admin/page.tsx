@@ -160,7 +160,31 @@ export default function AdminDashboard() {
   function saveStaff() {
     if (!staffForm.nama || !staffForm.email) return;
     if (isSupabaseEnabled && !editStaffId) {
-      alert("Di mode Supabase, staff harus daftar sendiri via halaman login.\n\nAdmin bisa menambah staff via menu Authentication di dashboard Supabase.");
+      const password = prompt("Password untuk staff baru (min 6 karakter):");
+      if (!password || password.length < 6) {
+        alert("Password minimal 6 karakter.");
+        return;
+      }
+      fetch("/api/admin/create-staff", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          email: staffForm.email,
+          password,
+          nama: staffForm.nama,
+          jabatan: staffForm.jabatan,
+          avatar: staffForm.avatar,
+        }),
+      })
+        .then((r) => r.json())
+        .then((res) => {
+          if (res.ok) {
+            ds.loadStaff().then(setStaff);
+            alert("Staff berhasil ditambahkan!");
+          } else {
+            alert("Gagal: " + res.error);
+          }
+        });
       setShowStaffModal(false);
       return;
     }
