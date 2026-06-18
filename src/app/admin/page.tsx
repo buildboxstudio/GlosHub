@@ -571,42 +571,54 @@ export default function AdminDashboard() {
         {/* ===== Salary Management ===== */}
         {tab === "salary" && (
           <PixelCard title="SALARY MANAGEMENT" badge="MENU" accent="yellow">
-            <div className="mb-4 flex justify-end">
-              <PixelButton variant="yellow" className="!text-[8px]" onClick={() => setShowSalaryModal(true)}>
-                + TAMBAH GAJI
-              </PixelButton>
-            </div>
-            {salaries.length === 0 ? (
+            {staff.filter((s) => s.role === "staff" && s.active).length === 0 ? (
               <p className="font-body text-base text-neon-cyan/50 text-center py-6">
-                Belum ada data gaji. Klik "TAMBAH GAJI" untuk mulai.
+                Belum ada staff. Tambah staff dulu di tab STAFF.
               </p>
             ) : (
               <div className="space-y-3">
-                {salaries.map((sal) => {
-                  const s = staff.find((x) => x.id === sal.staff_id);
+                {staff.filter((s) => s.role === "staff" && s.active).map((s) => {
+                  const sal = salaries.find((x) => x.staff_id === s.id);
                   return (
-                    <div key={sal.id}
+                    <div key={s.id}
                       className="grid grid-cols-2 sm:grid-cols-4 gap-2 border-2 border-ink-600 p-3 items-center"
                     >
-                      <span className="text-neon-mint font-body text-base">
-                        {s?.nama ?? sal.staff_id}
-                      </span>
+                      <span className="text-neon-mint font-body text-base">{s.nama}</span>
                       <label className="font-body text-sm">
                         <span className="text-neon-cyan/70 block text-xs">Gaji Harian</span>
-                        <input type="number" value={sal.gaji_harian}
-                          onChange={(e) => updateSalary(sal.id, "gaji_harian", Number(e.target.value))}
+                        <input type="number" value={sal?.gaji_harian ?? 150000}
+                          onChange={(e) => {
+                            const val = Number(e.target.value);
+                            if (sal) {
+                              updateSalary(sal.id, "gaji_harian", val);
+                            } else {
+                              const id = uid();
+                              setSalaries((prev) => [...prev, { id, staff_id: s.id, tanggal: todayISO(), gaji_harian: val, bonus: 0 }]);
+                            }
+                          }}
                           className="pixel-input !py-1 !text-base" />
                       </label>
                       <label className="font-body text-sm">
                         <span className="text-neon-cyan/70 block text-xs">Bonus</span>
-                        <input type="number" value={sal.bonus}
-                          onChange={(e) => updateSalary(sal.id, "bonus", Number(e.target.value))}
+                        <input type="number" value={sal?.bonus ?? 0}
+                          onChange={(e) => {
+                            const val = Number(e.target.value);
+                            if (sal) {
+                              updateSalary(sal.id, "bonus", val);
+                            } else {
+                              const id = uid();
+                              setSalaries((prev) => [...prev, { id, staff_id: s.id, tanggal: todayISO(), gaji_harian: 150000, bonus: val }]);
+                            }
+                          }}
                           className="pixel-input !py-1 !text-base" />
                       </label>
-                      <button onClick={() => deleteSalary(sal.id)}
-                        className="font-pixel text-[7px] border-2 border-neon-red text-neon-red px-2 py-1 h-fit">
-                        HAPUS
-                      </button>
+                      {sal && (
+                        <button onClick={() => deleteSalary(sal.id)}
+                          className="font-pixel text-[7px] border-2 border-neon-red text-neon-red px-2 py-1 h-fit">
+                          HAPUS
+                        </button>
+                      )}
+                      {!sal && <div />}
                     </div>
                   );
                 })}
@@ -618,37 +630,41 @@ export default function AdminDashboard() {
         {/* ===== Customer Handling ===== */}
         {tab === "customer" && (
           <PixelCard title="CUSTOMER HANDLING" badge="MENU" accent="pink">
-            <div className="mb-4 flex justify-end">
-              <PixelButton variant="pink" className="!text-[8px]" onClick={() => setShowCustModal(true)}>
-                + TAMBAH CUSTOMER
-              </PixelButton>
-            </div>
-            {customers.length === 0 ? (
+            {staff.filter((s) => s.role === "staff" && s.active).length === 0 ? (
               <p className="font-body text-base text-neon-cyan/50 text-center py-6">
-                Belum ada data customer. Klik "TAMBAH CUSTOMER" untuk mulai.
+                Belum ada staff. Tambah staff dulu di tab STAFF.
               </p>
             ) : (
               <div className="space-y-3">
-                {customers.map((c) => {
-                  const s = staff.find((x) => x.id === c.staff_id);
+                {staff.filter((s) => s.role === "staff" && s.active).map((s) => {
+                  const c = customers.find((x) => x.staff_id === s.id);
                   return (
-                    <div key={c.id}
+                    <div key={s.id}
                       className="flex items-center justify-between border-2 border-ink-600 p-3"
                     >
-                      <span className="text-neon-mint font-body text-base">
-                        {s?.nama ?? c.staff_id}
-                      </span>
+                      <span className="text-neon-mint font-body text-base">{s.nama}</span>
                       <div className="flex items-center gap-2">
                         <label className="flex items-center gap-2 font-body text-base">
                           <span className="text-neon-cyan/70 text-sm">Customer</span>
-                          <input type="number" value={c.jumlah_customer}
-                            onChange={(e) => updateCustomer(c.id, Number(e.target.value))}
+                          <input type="number" value={c?.jumlah_customer ?? ""}
+                            placeholder="0"
+                            onChange={(e) => {
+                              const val = Number(e.target.value);
+                              if (c) {
+                                updateCustomer(c.id, val);
+                              } else if (e.target.value) {
+                                const id = uid();
+                                setCustomers((prev) => [...prev, { id, staff_id: s.id, tanggal: todayISO(), jumlah_customer: val }]);
+                              }
+                            }}
                             className="pixel-input !w-24 !py-1 !text-base" />
                         </label>
-                        <button onClick={() => deleteCustomer(c.id)}
-                          className="font-pixel text-[7px] border-2 border-neon-red text-neon-red px-2 py-1">
-                          HAPUS
-                        </button>
+                        {c && (
+                          <button onClick={() => deleteCustomer(c.id)}
+                            className="font-pixel text-[7px] border-2 border-neon-red text-neon-red px-2 py-1">
+                            HAPUS
+                          </button>
+                        )}
                       </div>
                     </div>
                   );
