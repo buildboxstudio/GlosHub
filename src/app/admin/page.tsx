@@ -232,8 +232,13 @@ export default function AdminDashboard() {
       lokasi: attForm.lokasi || null,
     };
     setAttendance((prev) => [...prev, rec]);
-    ds.saveAttendance([rec]).catch(console.error);
-    setShowAttModal(false);
+    ds.saveAttendance([rec]).then(() => {
+      setShowAttModal(false);
+    }).catch((err) => {
+      alert("Gagal menyimpan: " + (err?.message || err));
+      setAttendance((prev) => prev.filter((x) => x.id !== rec.id));
+      setShowAttModal(false);
+    });
     setAttForm({ staff_id: "", tanggal: todayISO(), check_in: "", check_out: "", status: "hadir", lokasi: "" });
   }
 
