@@ -315,6 +315,68 @@ export default function AdminDashboard() {
     ds.deleteLeaveRow(id);
   }
 
+  // ---- Report helpers ----
+  function genAttRows() {
+    const rows: string[][] = [["Staff", "Tanggal", "Check In", "Check Out", "Status"]];
+    for (const a of attendance) {
+      rows.push([nameOf(a.staff_id), a.tanggal, a.check_in ?? "-", a.check_out ?? "-", a.status.toUpperCase()]);
+    }
+    return rows;
+  }
+
+  function genSalRows() {
+    const rows: string[][] = [["Staff", "Gaji Harian", "Bonus", "Total"]];
+    for (const s of salaries) {
+      const nama = nameOf(s.staff_id);
+      const total = s.gaji_harian + s.bonus;
+      rows.push([nama, rupiah(s.gaji_harian), rupiah(s.bonus), rupiah(total)]);
+    }
+    return rows;
+  }
+
+  function genPerfRows() {
+    const rows: string[][] = [["Staff", "Level", "XP", "Absensi", "Customer"]];
+    for (const s of staff.filter((x) => x.role === "staff")) {
+      const attCount = attendance.filter((a) => a.staff_id === s.id).length;
+      const custCount = customers.filter((c) => c.staff_id === s.id).reduce((sum, c) => sum + c.jumlah_customer, 0);
+      rows.push([s.nama, String(s.level), String(s.xp), String(attCount), String(custCount)]);
+    }
+    return rows;
+  }
+
+  function exportPDF(title: string, rows: string[][]) {
+    const w = window.open("", "_blank");
+    if (!w) return;
+    let html = `<html><head><meta charset="utf-8"><title>Laporan ${title}</title>
+<style>body{font-family:sans-serif;padding:20px}
+h1{font-size:18px;margin-bottom:10px}
+table{border-collapse:collapse;width:100%}
+th,td{border:1px solid #333;padding:6px 10px;text-align:left;font-size:13px}
+th{background:#eee}</style></head><body>
+<h1>Laporan ${title} - ${new Date().toLocaleDateString("id-ID")}</h1>
+<table>`;
+    for (let i = 0; i < rows.length; i++) {
+      html += "<tr>";
+      for (const cell of rows[i]) html += i === 0 ? `<th>${cell}</th>` : `<td>${cell}</td>`;
+      html += "</tr>";
+    }
+    html += "</table></body></html>";
+    w.document.write(html);
+    w.document.close();
+    w.print();
+  }
+
+  function exportCSV(title: string, rows: string[][]) {
+    const csv = rows.map((r) => r.join(",")).join("\n");
+    const blob = new Blob(["\uFEFF" + csv], { type: "text/csv;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `Laporan_${title}_${todayISO()}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
   return (
     <div className="relative min-h-screen pb-16">
       <PixelBackground />
@@ -736,19 +798,19 @@ export default function AdminDashboard() {
           <PixelCard title="REPORTS" badge="MENU" accent="purple">
             <div className="grid gap-4 sm:grid-cols-3">
               {[
-                { t: "ABSENSI", c: "mint" as const },
-                { t: "PENDAPATAN", c: "yellow" as const },
-                { t: "PERFORMA STAFF", c: "pink" as const },
+                { t: "ABSENSI", c: "mint" as const, onPdf: () => exportPDF("ABSENSI", genAttRows()), onXls: () => exportCSV("ABSENSI", genAttRows()) },
+                { t: "PENDAPATAN", c: "yellow" as const, onPdf: () => exportPDF("PENDAPATAN", genSalRows()), onXls: () => exportCSV("PENDAPATAN", genSalRows()) },
+                { t: "PERFORMA STAFF", c: "pink" as const, onPdf: () => exportPDF("PERFORMA", genPerfRows()), onXls: () => exportCSV("PERFORMA", genPerfRows()) },
               ].map((r) => (
                 <div key={r.t} className="border-2 border-ink-600 p-4 text-center">
                   <p className="font-pixel text-[8px] text-neon-cyan mb-3">
                     LAPORAN {r.t}
                   </p>
                   <div className="flex flex-col gap-2">
-                    <PixelButton variant="red" className="!text-[7px]">
+                    <PixelButton variant="red" className="!text-[7px]" onClick={r.onPdf}>
                       📄 EXPORT PDF
                     </PixelButton>
-                    <PixelButton variant="mint" className="!text-[7px]">
+                    <PixelButton variant="mint" className="!text-[7px]" onClick={r.onXls}>
                       📊 EXPORT EXCEL
                     </PixelButton>
                   </div>
