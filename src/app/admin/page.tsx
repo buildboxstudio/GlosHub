@@ -54,7 +54,7 @@ function ModalOverlay({
 }) {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70">
-      <div className="w-full max-w-md border-4 border-ink-600 bg-ink-900 p-6 pixel-card">
+      <div className="w-full max-w-md border-4 border-ink-600 bg-ink-900 p-6" style={{ clipPath: "none" }}>
         <div className="flex items-center justify-between mb-4">
           <h2 className="font-pixel text-[9px] text-neon-pink">{title}</h2>
           <button onClick={onClose} className="font-pixel text-[8px] text-neon-red">✕</button>
@@ -222,18 +222,17 @@ export default function AdminDashboard() {
   // ---- Attendance ----
   function addAttendance() {
     if (!attForm.staff_id) return;
-    setAttendance((prev) => [
-      ...prev,
-      {
-        id: "a-" + uid(),
-        staff_id: attForm.staff_id,
-        tanggal: attForm.tanggal,
-        check_in: attForm.check_in || null,
-        check_out: attForm.check_out || null,
-        status: attForm.status,
-        lokasi: attForm.lokasi || null,
-      },
-    ]);
+    const rec = {
+      id: uid(),
+      staff_id: attForm.staff_id,
+      tanggal: attForm.tanggal,
+      check_in: attForm.check_in || null,
+      check_out: attForm.check_out || null,
+      status: attForm.status,
+      lokasi: attForm.lokasi || null,
+    };
+    setAttendance((prev) => [...prev, rec]);
+    ds.saveAttendance([rec]).catch(console.error);
     setShowAttModal(false);
     setAttForm({ staff_id: "", tanggal: todayISO(), check_in: "", check_out: "", status: "hadir", lokasi: "" });
   }
